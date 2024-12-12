@@ -1,7 +1,6 @@
 import React from 'react';
-//import Link from 'next/link';
 import { useState } from 'react';
-//import { s3Upload } from '../utils/s3Upload';
+import { s3Upload } from '../utils/s3Upload';
 
 const FileUploader = () => {
     const [file, setFile] = useState(null);
