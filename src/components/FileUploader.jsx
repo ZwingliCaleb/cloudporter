@@ -21,7 +21,8 @@ const FileUploader = () => {
         setStatus("Uploading file...");
 
         try {
-            const uploadResult = await s3Upload(file);
+            const key = `${Date.now()}-${file.name}`
+            const uploadResult = await s3Upload(file, process.env.AWS_BUCKET_NAME, key);
             setStatus (`Upload successful: ${uploadResult.Location}`);
         } catch (error) {
             setStatus (`Upload failed: ${error.message}`);
