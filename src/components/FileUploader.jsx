@@ -11,6 +11,13 @@ const FileUploader = () => {
         setFile(e.target.files[0]);
     };
 
+    const getPresignedUrl = async (file) => {
+        const response = await fetch('/api/upload');
+        const data = await response.json();
+
+        return data.presignedUrl;
+    }
+
     const handleUpload = async () => {
         if (!file) {
             setStatus("No file selected");
@@ -21,8 +28,8 @@ const FileUploader = () => {
         setStatus("Uploading file...");
 
         try {
-            const key = `${Date.now()}-${file.name}`
-            const uploadResult = await s3Upload(file, process.env.AWS_BUCKET_NAME, key);
+            const presignedUrl = await getPresignedUrl(file);
+            const uploadResult = await uploadFileToS3(presignedUrl, file);
             setStatus (`Upload successful: ${uploadResult.Location}`);
         } catch (error) {
             setStatus (`Upload failed: ${error.message}`);
@@ -30,6 +37,20 @@ const FileUploader = () => {
             setUploading(false);
         }
     };
+
+    const uploadFileToS3 = async (URL, file) => {
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': file.type,
+            },
+            body: file,
+        });
+        if (!response.ok) {
+            throw new Error('Upload failed');
+        }
+        return response;
+    }
 
   return (
     <div>
