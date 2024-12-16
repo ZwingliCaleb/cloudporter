@@ -1,8 +1,7 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { NodeHttpHandler } from '@aws-sdk/node-http-handler';
 import multer from 'multer';
 import nextConnect from 'next-connect';
-import fs from 'fs';
-import path from 'path';
 
 // Initialize S3 client
 const s3 = new S3Client({
@@ -11,6 +10,10 @@ const s3 = new S3Client({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
+  requestHandler: new NodeHttpHandler({
+    connectionTimeout: 300000, // 5 minutes
+    socketTimeout: 300000, // 5 minutes
+  }),
 });
 
 // Configure multer for file handling (in-memory storage)
@@ -23,43 +26,34 @@ export const config = {
   },
 };
 
-export default async function handler(req, res) {
-  if (req.method === 'POST') {
-    // Use multer to parse the incoming form data (this happens in-memory)
-    const uploadMiddleware = upload.single('file');
+const handler = nextConnect()
+  .use(upload.single('file'))
+  .post(async (req, res) => {
+    const file = req.file;
 
-    // Handle the file upload through multer middleware
-    uploadMiddleware(req, res, async (err) => {
-      if (err) {
-        console.error('Error during file upload:', err);
-        return res.status(500).json({ success: false, message: 'Error during file upload' });
-      }
+    if (!file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded.' });
+    }
 
-      const file = req.file;
+    const uploadParams = {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: file.originalname, // Use the original file name as the key
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      // ACL: 'public-read', // Optional access control
+    };
 
-      if (!file) {
-        return res.status(400).json({ success: false, message: 'No file uploaded.' });
-      }
-
-      const uploadParams = {
-        Bucket: process.env.AWS_BUCKET_NAME,
-        Key: file.originalname, // Use the original file name as the key
-        Body: file.buffer,
-        ContentType: file.mimetype,
-        //ACL: 'public-read',
-      };
-
-      try {
-        const data = await s3.send(new PutObjectCommand(uploadParams));
-        console.log('File uploaded successfully:', data);
-        return res.status(200).json({ success: true, message: 'File uploaded successfully' });
-      } catch (error) {
-        console.error('Error uploading file:', error);
-        return res.status(500).json({ success: false, message: 'Error uploading file' });
-      }
-    });
-  } else {
-    // If it's not a POST request, return a 405 Method Not Allowed
+    try {
+      const data = await s3.send(new PutObjectCommand(uploadParams));
+      console.log('File uploaded successfully:', data);
+      res.status(200).json({ success: true, message: 'File uploaded successfully' });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      res.status(500).json({ success: false, message: 'Error uploading file', error: error.message });
+    }
+  })
+  .all((req, res) => {
     res.status(405).json({ success: false, message: 'Method Not Allowed' });
-  }
-}
+  });
+
+export default handler;
