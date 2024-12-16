@@ -1,66 +1,63 @@
-import React from 'react';
 import { useState } from 'react';
-import { s3Upload } from '../utils/s3Upload';
 
-const FileUploader = () => {
-    const [file, setFile] = useState(null);
-    const [uploading, setUploading] = useState(false);
-    const [status, setStatus] = useState(null);
+const UploadPage = () => {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState('');
 
-    const handleFileChange = (e) => {
-        setFile(e.target.files[0]);
-    };
+  const handleFileChange = (e) => {
+    setSelectedFile(e.target.files[0]);
+  };
 
-    const getPresignedUrl = async (file) => {
-        const response = await fetch('/api/upload');
-        const data = await response.json();
-
-        return data.presignedUrl;
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      alert('Please select a file to upload.');
+      return;
     }
 
-    const handleUpload = async () => {
-        if (!file) {
-            setStatus("No file selected");
-            return;
-        }
+    const formData = new FormData();
+    formData.append('file', selectedFile);
 
-        setUploading(true);
-        setStatus("Uploading file...");
+    try {
+      setUploading(true);
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-        try {
-            const presignedUrl = await getPresignedUrl(file);
-            const uploadResult = await uploadFileToS3(presignedUrl, file);
-            setStatus (`Upload successful: ${uploadResult.Location}`);
-        } catch (error) {
-            setStatus (`Upload failed: ${error.message}`);
-        } finally {
-            setUploading(false);
-        }
-    };
+      // Check if the response is okay (200 range)
+      const result = await response.json();
 
-    const uploadFileToS3 = async (URL, file) => {
-        const response = await fetch(url, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': file.type,
-            },
-            body: file,
-        });
-        if (!response.ok) {
-            throw new Error('Upload failed');
-        }
-        return response;
+      if (response.ok) {
+        setMessage('File uploaded successfully!');
+      } else {
+        setMessage('Error uploading file: ' + (result.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      setMessage('An error occurred. Please try again.');
+    } finally {
+      setUploading(false);
     }
+  };
 
   return (
-    <div>
-        <input type="file" onChange={handleFileChange}/>
-        <button onClick={handleUpload} disabled={uploading}>
-            {uploading ? 'Uploading...' : 'Upload File'}
-        </button>
-        {status && <p>{status}</p>}
-    </div>
-  )
-}
+    <div className="flex flex-col items-center justify-center h-screen">
+      <h1 className="text-xl mb-4">Upload File to S3</h1>
 
-export default FileUploader;
+      <input type="file" onChange={handleFileChange} className="mb-4" />
+
+      <button
+        className={`px-6 py-3 ${uploading ? 'bg-gray-400' : 'bg-blue-500'} text-white rounded`}
+        onClick={handleUpload}
+        disabled={uploading}
+      >
+        {uploading ? 'Uploading...' : 'Upload'}
+      </button>
+
+      {message && <p className="mt-4 text-center">{message}</p>}
+    </div>
+  );
+};
+
+export default UploadPage;
