@@ -12,6 +12,7 @@
     "@aws-sdk/client-s3": "^3.712.0",
     "@aws-sdk/node-http-handler": "^3.370.0",
     "aws-sdk": "^2.1692.0",
+    "axios": "^1.7.9",
     "multer": "^1.4.5-lts.1",
     "next": "^15.1.0",
     "next-connect": "^0.12.2",

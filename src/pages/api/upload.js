@@ -30,14 +30,17 @@ const handler = nextConnect()
   .use(upload.single('file'))
   .post(async (req, res) => {
     const file = req.file;
+    const userId = req.body.userId;
 
     if (!file) {
       return res.status(400).json({ success: false, message: 'No file uploaded.' });
     }
 
+    const fileKey = `uploads/${userId}/${Date.now()}-${file.originalname}`;
+
     const uploadParams = {
       Bucket: process.env.AWS_BUCKET_NAME,
-      Key: file.originalname, // Use the original file name as the key
+      Key: fileKey, // Use the original file name as the key
       Body: file.buffer,
       ContentType: file.mimetype,
       // ACL: 'public-read', // Optional access control
