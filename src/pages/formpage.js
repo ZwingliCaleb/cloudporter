@@ -3,7 +3,7 @@ import ProfileForm from '../components/ProfileForm';
 
 const FormPage = () => {
   return (
-    <div>
+    <div className="mb-6 flex flex-col items-center justify-center h-screen bg-gray-100">
         <ProfileForm/>
     </div>
   )
