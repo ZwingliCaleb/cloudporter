@@ -16,6 +16,8 @@
 # next.js
 /.next/
 /out/
+# Ignore uploads
+/public/uploads
 
 # production
 /build
