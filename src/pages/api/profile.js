@@ -82,12 +82,13 @@ export default async function handler(req, res) {
       const s3Data = await s3.send(new PutObjectCommand(s3Params));
       console.log('S3 response:', s3Data);
 
+      // Construct the avatar URL
       const avatarUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/avatars/${avatar.newFilename}`;
 
       const dbParams = {
-        TableName: 'users',
+        TableName: 'users',  // Ensure this is your correct table name in DynamoDB
         Item: {
-          email: email,
+          email: { S: email },
           name: name,
           avatarUrl: avatarUrl,
         },
@@ -107,7 +108,7 @@ export default async function handler(req, res) {
         return res.status(500).json({ success: false, message: 'S3 request timed out, please try again' });
       }
 
-      // General error response
+      // Handle errors from file system or DynamoDB
       res.status(500).json({ success: false, message: 'Error uploading avatar or saving user data' });
     } finally {
       // Clean up the uploaded file in the server after it's been processed
