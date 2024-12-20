@@ -3,119 +3,105 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 import formidable from 'formidable';
 import fs from 'fs';
-import path from 'path';
 
-// Ensure the upload directory exists
-const uploadDir = path.join(process.cwd(), 'public/uploads');
-fs.mkdirSync(uploadDir, { recursive: true });
-
-// Create DynamoDB client
-const client = new DynamoDBClient({ region: process.env.AWS_REGION });
-const ddbDocClient = DynamoDBDocumentClient.from(client);
-
-// Initialize S3 client
-const s3 = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  }
-});
-
-// Formidable configuration
-const form = formidable({
-  uploadDir: uploadDir, // Temporary directory for file storage
-  keepExtensions: true, // Keep file extensions
-  maxFileSize: 10 * 1024 * 1024, // Max file size (10MB)
-  multiples: false, // Single file upload
-});
+// Set up S3 and DynamoDB clients
+const s3Client = new S3Client({ region: 'us-east-1' });
+const ddbDocClient = DynamoDBDocumentClient.from(new DynamoDBClient({ region: 'us-east-1' }));
 
 export const config = {
   api: {
-    bodyParser: false, // Disallow body parsing, form-data is coming
+    bodyParser: false, // We are using formidable to parse the form data
   },
 };
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    console.log('Received a non-POST request');
-    res.status(405).json({ message: 'Method not allowed' });
-    return;
+// Function to upload file to S3
+const uploadFileToS3 = async (file) => {
+  // Log file details to understand the structure
+  console.log('File received for S3 upload:', file);
+
+  if (!file.filepath) {
+    throw new Error('File path is undefined');
   }
 
-  form.parse(req, async (err, fields, files) => {
-    if (err) {
-      console.error('Form parsing error:', err);
-      res.status(500).json({ message: 'Error parsing form' });
-      return;
-    }
+  const fileStream = fs.createReadStream(file.filepath);
+  const s3Params = {
+    Bucket: 'cloudporter-uploads',
+    Key: `uploads/${file.newFilename}`, // Ensure unique filenames
+    Body: fileStream,
+    ContentType: file.mimetype,
+  };
 
-    const { name, email } = fields;
-    const avatar = files.avatar ? files.avatar[0] : files.avatar;
+  const uploadResult = await s3Client.send(new PutObjectCommand(s3Params));
+  return `https://cloudporter-uploads.s3.amazonaws.com/uploads/${file.newFilename}`;
+};
 
-    if (!name || !email || !avatar) {
-      console.log('Missing fields:', { name, email, avatar });
-      res.status(400).json({ message: 'All fields are required' });
-      return;
-    }
+export default async function handler(req, res) {
+  let avatar; // Declare avatar at a higher scope
+  if (req.method === 'POST') {
+    const form = formidable({
+      uploadDir: './public/uploads', // Upload directory
+      keepExtensions: true,         // Keep file extension
+    });
 
-    console.log('Parsed file:', avatar);
-
-    if (!avatar || !avatar.filepath) {
-      console.log('Filepath is not defined for avatar');
-      res.status(500).json({ message: 'Filepath is not defined' });
-      return;
-    }
-
-    const s3Params = {
-      Bucket: process.env.AWS_BUCKET_NAME,
-      Key: `avatars/${avatar.newFilename}`,
-      Body: fs.createReadStream(avatar.filepath),
-      ContentType: avatar.mimetype,
-    };
-
-    try {
-      // Check if the file exists and is readable
-      fs.accessSync(avatar.filepath, fs.constants.R_OK);
-
-      console.log('Attempting to upload file to S3');
-      const s3Data = await s3.send(new PutObjectCommand(s3Params));
-      console.log('S3 response:', s3Data);
-
-      // Construct the avatar URL
-      const avatarUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/avatars/${avatar.newFilename}`;
-
-      const dbParams = {
-        TableName: 'users',  // Ensure this is your correct table name in DynamoDB
-        Item: {
-          email: { S: email },
-          name: name,
-          avatarUrl: avatarUrl,
-        },
-      };
-
-      console.log('Attempting to save user details to DynamoDB');
-      const dbData = await ddbDocClient.send(new PutCommand(dbParams));
-      console.log('DynamoDB response:', dbData);
-
-      // Respond with success
-      res.status(200).json({ success: true, message: 'Profile updated successfully' });
-    } catch (error) {
-      console.error('Error uploading to S3 or saving to DynamoDB:', error);
-      
-      // Check if the error is related to the S3 upload timeout
-      if (error.name === 'RequestTimeout') {
-        return res.status(500).json({ success: false, message: 'S3 request timed out, please try again' });
+    form.parse(req, async (err, fields, files) => {
+      if (err) {
+        return res.status(500).json({ error: 'Error parsing the form' });
       }
 
-      // Handle errors from file system or DynamoDB
-      res.status(500).json({ success: false, message: 'Error uploading avatar or saving user data' });
-    } finally {
-      // Clean up the uploaded file in the server after it's been processed
-      if (avatar && avatar.filepath) {
-        fs.unlinkSync(avatar.filepath);
-        console.log('Temporary file deleted');
+      // Log parsed fields and files for debugging
+      console.log('Fields:', fields);
+      console.log('Files:', files);
+
+      try {
+        const { name, email } = fields;  // Destructure fields for name and email
+        avatar = files.avatar ? files.avatar[0] : null; // Access the first file in the array
+
+        // Ensure all required fields are provided
+        if (!avatar || !name || !email) {
+          return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // Step 1: Upload the avatar to S3
+        const avatarUrl = await uploadFileToS3(avatar);
+
+        // Step 2: Save user details to DynamoDB
+        const dbParams = {
+          TableName: 'users',
+          Item: {
+            email: email[0],  // email is the partition key, assuming it's an array
+            name: name[0],     // User's name
+            avatarUrl: avatarUrl, // S3 URL for the avatar
+          },
+        };
+
+        await ddbDocClient.send(new PutCommand(dbParams));
+
+        // Step 3: Respond to the client
+        res.status(200).json({ message: 'Profile successfully updated', avatarUrl });
+      } catch (error) {
+        console.error('Error uploading to S3 or saving to DynamoDB:', error);
+        res.status(500).json({ error: 'Error uploading profile' });
       }
-    }
-  });
+    });
+  } else {
+    res.status(405).json({ message: 'Method Not Allowed' });
+  }
+
+  // Finally block for cleanup
+try {
+  if (avatar && avatar.filepath) {
+    fs.unlink(avatar.filepath, (err) => {
+      if (err) {
+        console.error('Error deleting temp file:', err);
+      } else {
+        console.log('Temp file deleted:', avatar.filepath);
+      }
+    });
+  } else {
+    console.error('No file found to delete');
+  }
+} catch (err) {
+  console.error('Error in finally block:', err);
+}
+
 }
