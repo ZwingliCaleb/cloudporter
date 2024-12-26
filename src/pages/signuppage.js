@@ -1,9 +1,62 @@
-import React from "react";
+import React, { useState } from "react";
+import { Auth } from 'aws-amplify';
+import { FaGoogle, FaFacebook, FaAmazon } from 'react-icons/fa';
 
-export default function Signup() {
-  const handleSignup = (event) => {
+const Signup = () => {
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const validate = () => {
+    const errors = {};
+    if (!formData.fullName) errors.fullName = "Full name is required.";
+    if (!formData.email) errors.email = "Email is required.";
+    if (!formData.password) errors.password = "Password is required.";
+    if (!formData.confirmPassword) errors.confirmPassword = "Please confirm your password.";
+    if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = "Passwords do not match.";
+    }
+    return errors;
+  };
+
+  const handleSignup = async (event) => {
     event.preventDefault();
-    // Logic to handle signup goes here, such as calling AWS Cognito API
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    setIsSubmitting(true);
+
+    try {
+      const { user } = await Auth.signUp({
+        username: formData.email,
+        password: formData.password,
+        attributes: {
+          email: formData.email,
+          name: formData.fullName,
+        },
+      });
+      console.log('Sign up success:', user);
+      // Redirect or show confirmation
+    } catch (error) {
+      console.error('Error signing up:', error);
+      setErrors({ ...errors, cognito: error.message });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -15,15 +68,18 @@ export default function Signup() {
         <form onSubmit={handleSignup} className="space-y-4">
           {/* Full Name */}
           <div>
-            <label htmlFor="full-name" className="block text-sm font-medium text-gray-700">Full Name</label>
+            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">Full Name</label>
             <input 
               type="text" 
-              id="full-name" 
-              name="full-name" 
+              id="fullName" 
+              name="fullName" 
               placeholder="John Doe" 
+              value={formData.fullName}
+              onChange={handleChange}
               className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
               required 
             />
+            {errors.fullName && <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>}
           </div>
 
           {/* Email */}
@@ -33,10 +89,13 @@ export default function Signup() {
               type="email" 
               id="email" 
               name="email" 
-              placeholder="you@example.com" 
+              placeholder="you@example.com"
+              value={formData.email}
+              onChange={handleChange}
               className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
               required 
             />
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>
 
           {/* Password */}
@@ -46,29 +105,39 @@ export default function Signup() {
               type="password" 
               id="password" 
               name="password" 
-              placeholder="********" 
+              placeholder="********"
+              value={formData.password}
+              onChange={handleChange}
               className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
               required 
             />
+            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
           </div>
 
           {/* Confirm Password */}
           <div>
-            <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">Confirm Password</label>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
             <input 
               type="password" 
-              id="confirm-password" 
-              name="confirm-password" 
-              placeholder="********" 
+              id="confirmPassword" 
+              name="confirmPassword" 
+              placeholder="********"
+              value={formData.confirmPassword}
+              onChange={handleChange}
               className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
               required 
             />
+            {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
           </div>
 
           {/* Signup Button */}
           <div>
-            <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-              Sign Up
+            <button 
+              type="submit" 
+              className="w-full bg-indigo-600 text-white font-bold py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Signing Up..." : "Sign Up"}
             </button>
           </div>
         </form>
@@ -85,28 +154,25 @@ export default function Signup() {
 
         {/* Social Login Buttons */}
         <div className="grid grid-cols-3 gap-3">
-          {/* Google */}
           <button className="w-full flex items-center justify-center border border-gray-300 rounded-md p-2 hover:bg-gray-50">
-            <img className="h-6 w-6" src="https://www.svgrepo.com/show/355037/google.svg" alt="Google" />
+            <FaGoogle className="h-6 w-6" />
           </button>
-          
-          {/* Facebook */}
           <button className="w-full flex items-center justify-center border border-gray-300 rounded-md p-2 hover:bg-gray-50">
-            <img className="h-6 w-6" src="https://www.svgrepo.com/show/319494/facebook.svg" alt="Facebook" />
+            <FaFacebook className="h-6 w-6" />
           </button>
-
-          {/* Amazon */}
           <button className="w-full flex items-center justify-center border border-gray-300 rounded-md p-2 hover:bg-gray-50">
-            <img className="h-6 w-6" src="https://www.svgrepo.com/show/354084/amazon.svg" alt="Amazon" />
+            <FaAmazon className="h-6 w-6" />
           </button>
         </div>
 
         {/* Sign in Link */}
         <p className="mt-6 text-center text-sm text-gray-600">
-          Already have an account?
+          Already have an account? 
           <a href="/loginpage" className="text-indigo-600 font-medium hover:text-indigo-500"> Sign in</a>
         </p>
       </div>
     </div>
   );
-}
+};
+
+export default Signup;

@@ -1,9 +1,47 @@
 import React from "react";
+import { Auth } from 'aws-amplify';
 
-export default function Login() {
-  const handleLogin = (event) => {
-    event.preventDefault();
-    // Logic to handle login goes here, such as calling AWS Cognito API
+const Login = () => {
+  const [ formData, setFormData] = useState ({
+    email: '',
+    password: '',
+  })
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const validate = () => {
+    const errors = {};
+    if (!formData.email) errors.email = "Email is required.";
+    if (!formData.password) errors.password = "password is required.";
+    return errors;
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    const validationErrors = validatte();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    setIsSubmitting(true);
+
+    try {
+      const user = await Auth.signIn(formData.email, formData.password);
+      console.log('Logged in successfully:', user);
+      //redirect after succesful login
+    } catch (error) {
+      console.error('Error logging in:', error);
+      setErrors({ ...errors, cognito: error.messsage });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -20,10 +58,13 @@ export default function Login() {
               type="email"
               id="email"
               name="email"
+              value={formData.email}
+              onChange={handleChange}
               placeholder="you@example.com"
-              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className={`mt-1 block w-full px-4 py-2 border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-md text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
               required
             />
+            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
           </div>
 
           {/* Password */}
@@ -33,10 +74,13 @@ export default function Login() {
               type="password"
               id="password"
               name="password"
+              value={formData.password}
+              onChange={handleChange}
               placeholder="********"
-              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className={`mt-1 block w-full px-4 py-2 border ${errors.password ? 'border-red-500' : 'border-gray-300'} rounded-md text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
               required
             />
+            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
           </div>
 
           {/* Login Button */}
@@ -44,8 +88,9 @@ export default function Login() {
             <button
               type="submit"
               className="w-full bg-indigo-600 text-white font-bold py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              disabled={isSubmitting}
             >
-              Sign In
+              {isSubmitting ? "Signing In..." : "Sign In"}
             </button>
           </div>
         </form>
@@ -92,3 +137,5 @@ export default function Login() {
     </div>
   );
 }
+
+export default Login;
