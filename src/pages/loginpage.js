@@ -1,11 +1,12 @@
-import React from "react";
-import { Auth } from 'aws-amplify';
+import React, { useState } from "react";
+import { CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js';
+import UserPool from '../services/UserPool';  // A file that exports your Cognito User Pool settings
 
 const Login = () => {
-  const [ formData, setFormData] = useState ({
+  const [formData, setFormData] = useState({
     email: '',
     password: '',
-  })
+  });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -19,29 +20,51 @@ const Login = () => {
   const validate = () => {
     const errors = {};
     if (!formData.email) errors.email = "Email is required.";
-    if (!formData.password) errors.password = "password is required.";
+    if (!formData.password) errors.password = "Password is required.";
     return errors;
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    const validationErrors = validatte();
+    const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
     setIsSubmitting(true);
 
-    try {
-      const user = await Auth.signIn(formData.email, formData.password);
-      console.log('Logged in successfully:', user);
-      //redirect after succesful login
-    } catch (error) {
-      console.error('Error logging in:', error);
-      setErrors({ ...errors, cognito: error.messsage });
-    } finally {
-      setIsSubmitting(false);
-    }
+    const user = new CognitoUser({
+      Username: formData.email,
+      Pool: UserPool,
+    });
+
+    const authDetails = new AuthenticationDetails({
+      Username: formData.email,
+      Password: formData.password,
+    });
+
+    user.authenticateUser(authDetails, {
+      onSuccess: (result) => {
+        console.log('Login success:', result);
+        // Redirect user or handle successful login
+        // Example: history.push('/dashboard');
+      },
+      onFailure: (err) => {
+        console.error('Login error:', err);
+        let errorMessage = 'An error occurred. Please try again.';
+        
+        if (err.code === 'UserNotFoundException') {
+          errorMessage = 'User not found. Please check your email or sign up.';
+        } else if (err.code === 'NotAuthorizedException') {
+          errorMessage = 'Incorrect password. Please try again.';
+        } else if (err.code) {
+          errorMessage = err.message;
+        }
+
+        setErrors({ cognito: errorMessage });
+        setIsSubmitting(false);
+      },
+    });
   };
 
   return (
@@ -49,7 +72,6 @@ const Login = () => {
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Sign in to your account</h2>
 
-        {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4">
           {/* Email */}
           <div>
@@ -83,7 +105,6 @@ const Login = () => {
             {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
           </div>
 
-          {/* Login Button */}
           <div>
             <button
               type="submit"
@@ -95,47 +116,10 @@ const Login = () => {
           </div>
         </form>
 
-        {/* Forgot Password Link */}
-        <div className="text-right mt-2">
-          <a href="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-500">Forgot password?</a>
-        </div>
-
-        {/* Divider */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="bg-white px-2 text-gray-500">Or sign in with</span>
-          </div>
-        </div>
-
-        {/* Social Login Buttons */}
-        <div className="grid grid-cols-3 gap-3">
-          {/* Google */}
-          <button className="w-full flex items-center justify-center border border-gray-300 rounded-md p-2 hover:bg-gray-50">
-            <img className="h-6 w-6" src="https://www.svgrepo.com/show/355037/google.svg" alt="Google" />
-          </button>
-          
-          {/* Facebook */}
-          <button className="w-full flex items-center justify-center border border-gray-300 rounded-md p-2 hover:bg-gray-50">
-            <img className="h-6 w-6" src="https://www.svgrepo.com/show/319494/facebook.svg" alt="Facebook" />
-          </button>
-
-          {/* Amazon */}
-          <button className="w-full flex items-center justify-center border border-gray-300 rounded-md p-2 hover:bg-gray-50">
-            <img className="h-6 w-6" src="https://www.svgrepo.com/show/354084/amazon.svg" alt="Amazon" />
-          </button>
-        </div>
-
-        {/* Sign up Link */}
-        <p className="mt-6 text-center text-sm text-gray-600">
-          Don't have an account? 
-          <a href="/signuppage" className="text-indigo-600 font-medium hover:text-indigo-500"> Sign up</a>
-        </p>
+        {errors.cognito && <p className="text-red-500 text-xs mt-4 text-center">{errors.cognito}</p>}
       </div>
     </div>
   );
-}
+};
 
 export default Login;
