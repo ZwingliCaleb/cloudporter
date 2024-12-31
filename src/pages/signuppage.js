@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { CognitoUserAttribute } from 'amazon-cognito-identity-js';
-import UserPool from '../services/UserPool';  // Same UserPool
+import UserPool from '../services/UserPool';  // Import your User Pool settings
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -155,7 +155,27 @@ const Signup = () => {
           </form>
         )}
 
+        <div className="my-6 text-center text-gray-500">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative bg-white px-4 text-sm">or</div>
+          </div>
+          <div className="mt-6 flex justify-center">
+            <button 
+              className="bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700"
+              onClick={() => alert('Google login not implemented yet')}
+            >
+              Sign Up with Google
+            </button>
+          </div>
+        </div>
+
         {errors.cognito && <p className="text-red-500 text-xs mt-4 text-center">{errors.cognito}</p>}
+        <p className="text-center text-sm text-gray-500 mt-4">
+          Already have an account? <a href="/loginpage" className="text-indigo-600 hover:underline">Sign in</a>
+        </p>
       </div>
     </div>
   );
