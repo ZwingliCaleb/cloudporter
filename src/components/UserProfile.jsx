@@ -1,4 +1,28 @@
 import { useState } from 'react';
+import Modal from 'react-modal';
+
+const ExpandableCard = ({ children, title }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const toggleModal = () => {
+    setIsOpen(!isOpen);
+  };
+
+  return (
+    <div>
+      <div onClick={toggleModal} className="bg-white shadow-md rounded-lg p-4 mb-4 cursor-pointer">
+        <div className="font-bold text-lg">{title}</div>
+      </div>
+      <Modal isOpen={isOpen} onRequestClose={toggleModal} className="modal" overlayClassName="overlay">
+        <div className="p-4 bg-white rounded-lg shadow-md max-w-md mx-auto">
+          <h2 className="font-bold text-xl mb-4">{title}</h2>
+          <button onClick={toggleModal} className="bg-blue-500 text-white px-4 py-2 rounded mb-4">Close</button>
+          {children}
+        </div>
+      </Modal>
+    </div>
+  );
+};
 
 const ProfileForm = () => {
   const [avatar, setAvatar] = useState(null);
@@ -34,8 +58,8 @@ const ProfileForm = () => {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100">
-      <div className="bg-white shadow-md rounded-lg p-8 max-w-md w-full">
+    <ExpandableCard title="User Profile">
+      <div className="bg-white shadow-md rounded-lg p-8">
         <h2 className="text-2xl font-semibold mb-6 text-center">Update Profile</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex flex-col">
@@ -75,7 +99,7 @@ const ProfileForm = () => {
           </button>
         </form>
       </div>
-    </div>
+    </ExpandableCard>
   );
 };
 
