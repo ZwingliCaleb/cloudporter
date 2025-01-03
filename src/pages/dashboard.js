@@ -1,7 +1,7 @@
 import React from 'react';
 import UserProfile from '../components/UserProfile';
 import FileUploader from '../components/FileUploader';
-//import FileList from '../components/FileList';
+import FileList from '../components/FileList';
 //import ActivityLog from '../components/ActivityLog';
 //import Notifications from '../components/Notifications';
 
@@ -12,8 +12,8 @@ const dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-4xl">
         <UserProfile className="bg-white p-6 rounded-lg shadow-md w-full"/>
         <FileUploader className="bg-white p-6 rounded-lg shadow-md w-full"/>
-        {/*<FileList />}
-        <ActivityLog />
+        <FileList />
+        {/*<ActivityLog />
         <Notifications /> */}
       </div>
     </div>
