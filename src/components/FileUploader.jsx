@@ -1,28 +1,5 @@
 import { useState, useEffect } from 'react';
-import Modal from 'react-modal';
-
-const ExpandableCard = ({ children, title }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const toggleModal = () => {
-    setIsOpen(!isOpen);
-  };
-
-  return (
-    <div>
-      <div onClick={toggleModal} className="bg-white shadow-md rounded-lg p-4 mb-4 cursor-pointer">
-        <div className="font-bold text-lg">{title}</div>
-      </div>
-      <Modal isOpen={isOpen} onRequestClose={toggleModal} className="modal" overlayClassName="overlay">
-        <div className="p-4 bg-white rounded-lg shadow-md max-w-md mx-auto">
-          <h2 className="font-bold text-xl mb-4">{title}</h2>
-          <button onClick={toggleModal} className="bg-blue-500 text-white px-4 py-2 rounded mb-4">Close</button>
-          {children}
-        </div>
-      </Modal>
-    </div>
-  );
-};
+import ExpandableCard from './ExpandableCard'; // Adjust the import path as necessary
 
 const FileUploader = () => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -32,11 +9,22 @@ const FileUploader = () => {
 
   useEffect(() => {
     const userIdFromStorage = localStorage.getItem('userId') || 'defaultUserId';
-    setUserId(userIdFromStorage)
+    setUserId(userIdFromStorage);
   }, [setUserId]);
 
   const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
+    const file = e.target.files[0];
+    const allowedTypes = [
+      'image/jpeg', 'image/png', 'application/pdf',
+      'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+
+    if (file && allowedTypes.includes(file.type)) {
+      setSelectedFile(file);
+    } else {
+      alert('Please select a valid file type (JPEG, PNG, PDF, DOC, DOCX, XLS, XLSX).');
+    }
   };
 
   const handleUpload = async () => {
@@ -77,8 +65,13 @@ const FileUploader = () => {
   };
 
   return (
-    <ExpandableCard title="File Uploader">
-      <div className="flex flex-col items-center justify-center h-screen">
+    <ExpandableCard
+      title="File Uploader"
+      description="Upload your files to the S3 bucket securely."
+      buttonLabel="Start Upload"
+      onButtonClick={handleUpload}
+    >
+      <div className="flex flex-col items-center justify-center">
         <h1 className="text-xl mb-4">Upload File to S3</h1>
         <input type="file" onChange={handleFileChange} className="mb-4" />
         <button
