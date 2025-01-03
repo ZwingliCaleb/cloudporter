@@ -9,7 +9,7 @@ const s3Client = new S3Client({
 });
 
 const bucketName = process.env.AWS_BUCKET_NAME;
-const uploadsPrefix = 'uploads/'; // Match the prefix used in upload.js
+const uploadsPrefix = 'uploads/'; // Ensure this matches the folder where files are stored
 
 const handler = async (req, res) => {
   console.log('API Route Hit: /api/files'); // Log to verify route is hit
@@ -20,14 +20,19 @@ const handler = async (req, res) => {
     try {
       const params = {
         Bucket: bucketName,
-        Prefix: uploadsPrefix, // Use the correct prefix to list files
+        Prefix: uploadsPrefix,
       };
 
       const command = new ListObjectsV2Command(params);
       const data = await s3Client.send(command);
       console.log('S3 Response:', data); // Log the full S3 response
 
-      const files = data.Contents?.map(item => ({ name: item.Key })) || [];
+      // Map through the S3 response to include file metadata
+      const files = data.Contents?.map(item => ({
+        name: item.Key,
+        size: item.Size,
+        lastModified: item.LastModified
+      })) || [];
       console.log('Fetched Files:', files); // Log fetched files
 
       res.status(200).json(files);

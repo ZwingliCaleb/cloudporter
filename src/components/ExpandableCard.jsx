@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Modal from 'react-modal';
+import '@fortawesome/fontawesome-free/css/all.min.css'; // Ensure Font Awesome is included
 
 const ExpandableCard = ({ children, title, description, buttonLabel, onButtonClick }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -18,9 +19,11 @@ const ExpandableCard = ({ children, title, description, buttonLabel, onButtonCli
         </button>
       </div>
       <Modal isOpen={isOpen} onRequestClose={toggleModal} className="modal" overlayClassName="overlay">
-        <div className="p-4 bg-white rounded-lg shadow-md max-w-md mx-auto">
+        <div className="p-4 bg-white rounded-lg shadow-md max-w-md mx-auto relative">
+          <button onClick={toggleModal} className="absolute top-2 right-2 text-gray-600 hover:text-gray-800">
+            <i className="fas fa-times text-2xl"></i>
+          </button>
           <h2 className="font-bold text-xl mb-4">{title}</h2>
-          <button onClick={toggleModal} className="bg-blue-500 text-white px-4 py-2 rounded mb-4">Close</button>
           {children}
         </div>
       </Modal>

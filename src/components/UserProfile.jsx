@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import ExpandableCard from './ExpandableCard'; // Adjust the import path as necessary
+import ExpandableCard from './ExpandableCard';
 
 const ProfileForm = () => {
   const [avatar, setAvatar] = useState(null);
