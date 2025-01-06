@@ -46,6 +46,10 @@ const Login = () => {
     user.authenticateUser(authDetails, {
       onSuccess: (result) => {
         console.log('Login success:', result);
+
+        //store the JWT token in localStorage
+        const idToken = result.getIdToken().getJwtToken();
+        localStorage.setItem('token', idToken);
         // Redirect user to the dashboard upon successful login
         window.location.href = '/dashboard';
       },
