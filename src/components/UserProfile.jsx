@@ -27,6 +27,8 @@ const ProfileForm = () => {
 
       if (response.ok) {
         setMessage('Profile successfully updated');
+        // After profile update, mark the profile as complete in the backend
+        const userResponse = await fetch('/api/user/markComplete', { method: 'POST' });
       } else {
         setMessage('Failed to update profile');
       }

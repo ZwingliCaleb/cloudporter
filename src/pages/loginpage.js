@@ -1,12 +1,9 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import { CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js';
-import UserPool from '../services/UserPool';  // Import your User Pool settings
+import UserPool from '../services/UserPool';
 
 const Login = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -17,25 +14,14 @@ const Login = () => {
     });
   };
 
-  const validate = () => {
-    const errors = {};
-    if (!formData.email) errors.email = "Email is required.";
-    if (!formData.password) errors.password = "Password is required.";
-    return errors;
-  };
-
   const handleLogin = async (e) => {
     e.preventDefault();
-    const validationErrors = validate();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
     setIsSubmitting(true);
+    setErrors({});
 
     const user = new CognitoUser({
       Username: formData.email,
-      Pool: UserPool,
+      Pool: UserPool, // Your Cognito User Pool configuration
     });
 
     const authDetails = new AuthenticationDetails({
@@ -47,25 +33,17 @@ const Login = () => {
       onSuccess: (result) => {
         console.log('Login success:', result);
 
-        //store the JWT token in localStorage
-        const idToken = result.getIdToken().getJwtToken();
-        localStorage.setItem('token', idToken);
+        // Store the session tokens
+        localStorage.setItem('accessToken', result.getAccessToken().getJwtToken());
+        localStorage.setItem('idToken', result.getIdToken().getJwtToken());
+        localStorage.setItem('refreshToken', result.getRefreshToken().getToken());
+
         // Redirect user to the dashboard upon successful login
         window.location.href = '/dashboard';
       },
       onFailure: (err) => {
         console.error('Login error:', err);
-        let errorMessage = 'An error occurred. Please try again.';
-        
-        if (err.code === 'UserNotFoundException') {
-          errorMessage = 'User not found. Please check your email or sign up.';
-        } else if (err.code === 'NotAuthorizedException') {
-          errorMessage = 'Incorrect password. Please try again.';
-        } else if (err.code) {
-          errorMessage = err.message;
-        }
-
-        setErrors({ cognito: errorMessage });
+        setErrors({ cognito: err.message || 'Authentication failed' });
         setIsSubmitting(false);
       },
     });
@@ -75,7 +53,6 @@ const Login = () => {
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Sign in to your account</h2>
-
         <form onSubmit={handleLogin} className="space-y-4">
           {/* Email */}
           <div>
@@ -119,23 +96,6 @@ const Login = () => {
             </button>
           </div>
         </form>
-
-        <div className="my-6 text-center text-gray-500">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative bg-white px-4 text-sm">or</div>
-          </div>
-          <div className="mt-6 flex justify-center">
-            <button 
-              className="bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700"
-              onClick={() => alert('Google login not implemented yet')}
-            >
-              Sign In with Google
-            </button>
-          </div>
-        </div>
 
         {errors.cognito && <p className="text-red-500 text-xs mt-4 text-center">{errors.cognito}</p>}
         <p className="text-center text-sm text-gray-500 mt-4">

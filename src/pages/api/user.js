@@ -1,75 +1,60 @@
-import { DynamoDBClient, GetCommand } from "@aws-sdk/client-dynamodb";
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import jwtDecode from 'jwt-decode'; // To decode the JWT token
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// Set up DynamoDB and S3 clients
-const dynamoDB = new DynamoDBClient({ region: 'us-east-1' });
+// Set up S3 and DynamoDB clients
 const s3Client = new S3Client({ region: 'us-east-1' });
+const ddbDocClient = DynamoDBDocumentClient.from(new DynamoDBClient({ region: 'us-east-1' }));
 
-const getUserDataFromDynamoAndS3 = async (username) => {
-  // Fetch data from DynamoDB
-  const dynamoData = await dynamoDB.send(new GetCommand({
-    TableName: 'users',
-    Key: { email: username } // Assuming email is the partition key
-  }));
-
-  if (!dynamoData.Item) {
-    throw new Error('User not found');
-  }
-
-  // Fetch avatar from S3
+// Function to get the avatar from S3 using a signed URL
+const getAvatarUrl = async (avatarKey) => {
   const getObjectParams = {
     Bucket: 'cloudporter-uploads',
-    Key: `uploads/${dynamoData.Item.avatarUrl.split('/').pop()}` // Assuming avatarUrl is stored in DynamoDB
+    Key: `uploads/${avatarKey}`,
   };
   const avatarUrl = await getSignedUrl(s3Client, new GetObjectCommand(getObjectParams), { expiresIn: 3600 });
-
-  return {
-    ...dynamoData.Item,
-    avatar: avatarUrl
-  };
+  return avatarUrl;
 };
 
-const handler = async (req, res) => {
-  try {
-    // Extract the token from the Authorization header
-    const token = req.headers.authorization?.split(' ')[1];
-
-    if (!token) {
-      console.log('No token provided');
-      return res.status(401).json({ error: 'No token provided' });
-    }
-
-    // Decode and verify the token
-    let decodedToken;
+export default async function handler(req, res) {
+  if (req.method === 'GET') {
     try {
-      decodedToken = jwtDecode(token);
-      console.log('Decoded token:', decodedToken);
+      const { email } = req.query;
+
+      if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+      }
+
+      // Fetch user data from DynamoDB
+      const dbParams = {
+        TableName: 'users',
+        Key: { email },
+      };
+
+      const result = await ddbDocClient.send(new GetCommand(dbParams));
+
+      if (!result.Item) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const userData = result.Item;
+
+      // Get avatar URL from S3
+      const avatarUrl = await getAvatarUrl(userData.avatarUrl);
+
+      // Return the user data along with profileCompleted and avatar URL
+      res.status(200).json({
+        name: userData.name,
+        email: userData.email,
+        avatar: avatarUrl,
+        profileCompleted: userData.profileCompleted || false, // Check if profile is completed
+      });
     } catch (error) {
-      console.log('Invalid token:', error);
-      return res.status(401).json({ error: 'Invalid token' });
+      console.error('Error fetching user data:', error);
+      res.status(500).json({ error: 'Failed to fetch user data' });
     }
-
-    // Extract username from the decoded token
-    const { email } = decodedToken;
-
-    // If the requested username does not match the token's email, deny access
-    const { username } = req.query;
-    if (email !== username) {
-      console.log(`Forbidden access: token email ${email} does not match requested username ${username}`);
-      return res.status(403).json({ error: 'Forbidden: You cannot access this data' });
-    }
-
-    // Fetch user data from DynamoDB and S3
-    const userData = await getUserDataFromDynamoAndS3(username);
-    res.status(200).json(userData);
-
-  } catch (error) {
-    console.error('Error fetching user data:', error);
-    res.status(500).json({ error: 'Failed to fetch user data' });
+  } else {
+    res.status(405).json({ message: 'Method Not Allowed' });
   }
-};
-
-export default handler;
-
+}
