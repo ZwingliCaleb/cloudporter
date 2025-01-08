@@ -9,7 +9,7 @@ import HamburgerMenu from '../components/HamburgerMenu';
 const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [isProfileUpdated, setIsProfileUpdated] = useState(false);
-  const [avatar, setAvatar] = useState(null); // Local state for the avatar image
+  const [avatar, setAvatar] = useState(null);
   const [userInfo, setUserInfo] = useState(null);
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
@@ -18,22 +18,22 @@ const Dashboard = () => {
     const fetchUserData = async () => {
       try {
         const cognitoClient = new CognitoIdentityProviderClient({
-          region: "us-east-1",  // Add your AWS region here
+          region: "us-east-1",
         });
 
         const accessToken = localStorage.getItem('accessToken');
         if (!accessToken) {
           console.error("Access token not found. Redirecting to login");
-          window.location.href = '/loginpage';  // Redirect to login page
+          window.location.href = '/loginpage';
           return;
         }
 
         const command = new GetUserCommand({
-          AccessToken: accessToken, 
+          AccessToken: accessToken,
         });
 
         const data = await cognitoClient.send(command);
-        
+
         const userAttributes = data.UserAttributes.reduce((acc, attr) => {
           acc[attr.Name] = attr.Value;
           return acc;
@@ -42,8 +42,8 @@ const Dashboard = () => {
         const userInfo = {
           name: userAttributes.name,
           email: userAttributes.email,
-          avatar: userAttributes.picture, // Assuming the avatar is stored as 'picture' attribute
-          profileCompleted: userAttributes['custom:profileCompleted'] === 'true', // Custom attribute to track profile completion
+          avatar: userAttributes.picture,
+          profileCompleted: userAttributes['custom:profileCompleted'] === 'true',
         };
 
         setUserInfo(userInfo);
@@ -51,7 +51,6 @@ const Dashboard = () => {
         setIsProfileUpdated(userInfo.profileCompleted);
         setUser(userInfo);
 
-        // Show profile pop-up if profile is not completed
         if (!userInfo.profileCompleted) {
           setShowProfilePopup(true);
         }
@@ -73,10 +72,14 @@ const Dashboard = () => {
       if (!file) return;
 
       const s3Client = new S3Client({
-        region: "us-east-1",  // Set your AWS region
+        region: "us-east-1",
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+        }
       });
 
-      const bucketName = "cloudporter-uploads";  // Replace with your actual S3 bucket name
+      const bucketName = "cloudporter-uploads";
       const key = `avatars/${file.name}`;
 
       const command = new PutObjectCommand({
@@ -122,6 +125,15 @@ const Dashboard = () => {
     }
   };
 
+  const handleProfileUpdateCallback = (updatedName, updatedAvatarUrl) => {
+    setUser(prevUser => ({
+      ...prevUser,
+      name: updatedName,
+      avatar: updatedAvatarUrl,
+    }));
+    setAvatar(updatedAvatarUrl);
+  };
+
   return (
     <div className="rounded-lg shadow-lg w-full min-h-screen max-w-8xl mx-auto p-8 m-4">
       <div className="min-h-screen bg-gray-100 flex flex-col items-center py-8">
@@ -131,10 +143,10 @@ const Dashboard = () => {
         </div>
         <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
         {showUserProfile ? (
-          <UserProfile className="bg-white p-6 rounded-lg shadow-md w-full" user={user} />
+          <UserProfile className="bg-white p-6 rounded-lg shadow-md w-full" user={user} onProfileUpdate={handleProfileUpdateCallback} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-4xl">
-            <UserProfile className="bg-white p-6 rounded-lg shadow-md w-full" user={user} />
+            <UserProfile className="bg-white p-6 rounded-lg shadow-md w-full" user={user} onProfileUpdate={handleProfileUpdateCallback} />
             <FileUploader className="bg-white p-6 rounded-lg shadow-md w-full" />
             <FileList />
           </div>

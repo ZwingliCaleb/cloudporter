@@ -7,6 +7,17 @@ const Login = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Utility to validate email
+  const validateEmail = (email) => {
+    const re = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
+    return re.test(email);
+  };
+
+  // Utility to validate password (length >= 8)
+  const validatePassword = (password) => {
+    return password.length >= 8;
+  };
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -18,6 +29,22 @@ const Login = () => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrors({});
+
+    // Frontend validation
+    let formErrors = {};
+    if (!validateEmail(formData.email)) {
+      formErrors.email = 'Please enter a valid email address';
+    }
+    if (!validatePassword(formData.password)) {
+      formErrors.password = 'Password must be at least 8 characters long';
+    }
+
+    // If there are validation errors, stop submission and show errors
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors);
+      setIsSubmitting(false);
+      return;
+    }
 
     const user = new CognitoUser({
       Username: formData.email,
@@ -43,7 +70,20 @@ const Login = () => {
       },
       onFailure: (err) => {
         console.error('Login error:', err);
-        setErrors({ cognito: err.message || 'Authentication failed' });
+
+        // Handle specific Cognito errors
+        let cognitoErrors = {};
+        if (err.code === 'UserNotFoundException') {
+          cognitoErrors.cognito = 'User does not exist';
+        } else if (err.code === 'NotAuthorizedException') {
+          cognitoErrors.cognito = 'Incorrect username or password. Please try again.';
+        } else if (err.code === 'UserNotConfirmedException') {
+          cognitoErrors.cognito = 'User not confirmed. Please check your email.';
+        } else {
+          cognitoErrors.cognito = err.message || 'Authentication failed';
+        }
+
+        setErrors(cognitoErrors);
         setIsSubmitting(false);
       },
     });
@@ -97,7 +137,9 @@ const Login = () => {
           </div>
         </form>
 
+        {/* Cognito error - Displayed at the bottom of the form */}
         {errors.cognito && <p className="text-red-500 text-xs mt-4 text-center">{errors.cognito}</p>}
+
         <p className="text-center text-sm text-gray-500 mt-4">
           Don't have an account? <a href="/signuppage" className="text-indigo-600 hover:underline">Sign up</a>
         </p>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CognitoUser } from 'amazon-cognito-identity-js';
 import UserPool from '../services/UserPool';
 
@@ -8,6 +9,7 @@ const Verify = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const navigate = useNavigate();
 
   const handleVerify = async (e) => {
     e.preventDefault();
@@ -40,7 +42,7 @@ const Verify = () => {
             <p className="mt-4 text-center">
               <button 
                 className="w-full bg-indigo-600 text-white font-bold py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                onClick={() => window.location.href = '/loginpage'}
+                onClick={() => navigate('/loginpage')}
               >
                 Go to Login
               </button>

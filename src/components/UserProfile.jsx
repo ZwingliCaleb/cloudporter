@@ -1,11 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ExpandableCard from './ExpandableCard';
 
-const ProfileForm = () => {
+const ProfileForm = ({ user, onProfileUpdate }) => {
   const [avatar, setAvatar] = useState(null);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name);
+      setEmail(user.email);
+      setAvatar(null);
+    };
+  }, [user]);
 
   const handleFileChange = (e) => {
     setAvatar(e.target.files[0]);
@@ -26,10 +34,12 @@ const ProfileForm = () => {
       });
 
       if (response.ok) {
+        const data = await response.json();
         setMessage('Profile successfully updated');
-        // After profile update, mark the profile as complete in the backend
-        const userResponse = await fetch('/api/user/markComplete', { method: 'POST' });
+        onProfileUpdate(name, data.avatarUrl);
       } else {
+        const errorData = await response.json();
+        console.error('Failed to update profile:', errorData);
         setMessage('Failed to update profile');
       }
     } catch (error) {
@@ -79,9 +89,8 @@ const ProfileForm = () => {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="border border-gray-300 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter your email"
+              disabled
+              className="border border-gray-300 p-2 rounded-md bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <button
