@@ -18,7 +18,11 @@ const ExpandableCard = ({ children, title, description, buttonLabel, onButtonCli
           {buttonLabel}
         </button>
       </div>
-      <Modal isOpen={isOpen} onRequestClose={toggleModal} className="modal" overlayClassName="overlay">
+      <Modal isOpen={isOpen}
+       onRequestClose={toggleModal} 
+       className="modal w-full max-w-4xl" 
+       overlayClassName="overlay"
+       >
         <div className="p-4 bg-white rounded-lg shadow-md max-w-md mx-auto relative">
           <button onClick={toggleModal} className="absolute top-2 right-2 text-gray-600 hover:text-gray-800">
             <i className="fas fa-times text-2xl"></i>

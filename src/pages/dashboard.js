@@ -177,8 +177,8 @@ const Dashboard = () => {
             <h2 className="text-lg font-semibold mb-4">Complete Your Profile</h2>
             <p>Please complete your profile to get the best experience.</p>
             <div className="mt-4">
-              <button onClick={handleProfileUpdate} className="btn btn-primary">Complete Profile</button>
-              <button onClick={() => setShowProfilePopup(false)} className="btn btn-secondary ml-2">Later</button>
+              <button onClick={handleProfileUpdate} className="btn btn-primary p-2 bg-teal-300 rounded-md">Complete Profile</button>
+              <button onClick={() => setShowProfilePopup(false)} className="btn btn-secondary p-2 ml-2 bg-blue-300 rounded-md">Later</button>
             </div>
           </div>
         </div>
