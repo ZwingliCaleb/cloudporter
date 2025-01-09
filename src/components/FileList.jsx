@@ -1,112 +1,95 @@
-import { useState, useEffect } from 'react';
-import ExpandableCard from './ExpandableCard';
-import '@fortawesome/fontawesome-free/css/all.min.css'; // Ensure Font Awesome is included
+import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 
 const FileList = () => {
   const [files, setFiles] = useState([]);
-  const [error, setError] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
 
+  // Fetch files from the API
   useEffect(() => {
     const fetchFiles = async () => {
       try {
         const response = await fetch('/api/files');
-        const fileList = await response.json();
-        if (Array.isArray(fileList)) {
-          setFiles(fileList);
-        } else {
-          throw new Error('Parsed response is not an array');
-        }
+        if (!response.ok) throw new Error('Failed to fetch files');
+        const data = await response.json();
+        setFiles(data);
       } catch (error) {
         console.error('Error fetching files:', error);
-        setError('Failed to fetch files. Please try again later.');
       }
     };
 
     fetchFiles();
   }, []);
 
-  const handleDownload = async (key) => {
-    try {
-      const response = await fetch(`/api/download?key=${encodeURIComponent(key)}`);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = key.split('/').pop(); // Extract file name
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch (error) {
-      console.error('Error downloading file:', error);
-    }
+  // Handle image preview click
+  const handlePreviewClick = (file) => {
+    setSelectedFile(file);
   };
 
-  const handleDelete = async (key) => {
-    console.log('Attempting to delete file with key:', key);
-    try {
-      const response = await fetch(`/api/delete?key=${encodeURIComponent(key)}`, {
-        method: 'DELETE',
-      });
-      if (response.ok) {
-        setFiles(files.filter(file => file.name !== key));
-      } else {
-        console.error('Error deleting file:', await response.json());
-      }
-    } catch (error) {
-      console.error('Error deleting file:', error);
-    }
+  // Close the preview modal
+  const handleClosePreview = () => {
+    setSelectedFile(null);
   };
 
   return (
-    <ExpandableCard
-      title="File List"
-      description="View all your uploaded files here."
-      buttonLabel="Refresh List"
-      onButtonClick={() => window.location.reload()}
-    >
-      <div className="bg-white shadow-md rounded-lg p-8">
-        <h2 className="text-2xl font-semibold mb-6 text-center">Uploaded Files</h2>
-        {error && <p className="text-red-500">{error}</p>}
-        <ul className="space-y-4">
-          {Array.isArray(files) && files.map((file, index) => (
-            <li key={index} className="border border-gray-300 p-4 rounded-md flex justify-between items-center">
-              <div>
-                <span className="font-medium text-gray-800">{file.name.split('/').pop()}</span>
-                <div className="text-sm text-gray-500">Size: {formatFileSize(file.size)}</div>
-                <div className="text-sm text-gray-500">Uploaded: {formatDateTime(file.lastModified)}</div>
+    <div className="bg-white p-6 rounded-lg shadow-md w-full">
+      <h3 className="text-xl font-semibold mb-4">Files</h3>
+      
+      {/* Files List */}
+      <div className="space-y-4 overflow-y-auto max-h-80">
+        {files.length === 0 ? (
+          <p>No files available</p>
+        ) : (
+          files.map((file) => (
+            <div
+              key={file.name}
+              className="flex items-center space-x-4 cursor-pointer"
+              onClick={() => handlePreviewClick(file)}
+            >
+              <div className="w-16 h-16 relative">
+                <Image
+                  src={`https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.name}`}
+                  alt={file.name}
+                  layout="fill"
+                  objectFit="cover"
+                  className="rounded-full"
+                />
               </div>
-              <div className="flex space-x-2">
-                <button className="text-blue-500 hover:text-blue-700" onClick={() => handleDownload(file.name)}>
-                  <i className="fas fa-download"></i>
-                </button>
-                <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(file.name)}>
-                  <i className="fas fa-trash"></i>
-                </button>
+              <div className="flex-1">
+                <p className="text-sm font-medium">{file.name}</p>
+                <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
               </div>
-            </li>
-          ))}
-        </ul>
+            </div>
+          ))
+        )}
       </div>
-    </ExpandableCard>
+
+      {/* Preview Modal */}
+      {selectedFile && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <button
+              onClick={handleClosePreview}
+              className="absolute top-2 right-2 text-white bg-black p-2 rounded-full"
+            >
+              ✕
+            </button>
+            <div className="flex justify-center mb-4">
+              <div className="w-64 h-64 relative">
+                <Image
+                  src={`https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${selectedFile.name}`}
+                  alt={selectedFile.name}
+                  layout="fill"
+                  objectFit="contain"
+                  className="rounded-lg"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
-};
-
-// Utility functions for formatting file size and date
-const formatFileSize = (size) => {
-  if (size < 1024) return `${size} bytes`;
-  size = size / 1024;
-  if (size < 1024) return `${size.toFixed(2)} KB`;
-  size = size / 1024;
-  if (size < 1024) return `${size.toFixed(2)} MB`;
-  size = size / 1024;
-  return `${size.toFixed(2)} GB`;
-};
-
-const formatDateTime = (dateTime) => {
-  const date = new Date(dateTime);
-  const formattedDate = date.toLocaleDateString();
-  const formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  return `${formattedDate} at ${formattedTime}`;
 };
 
 export default FileList;

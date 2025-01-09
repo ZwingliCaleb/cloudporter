@@ -5,6 +5,7 @@ import UserProfile from '../components/UserProfile';
 import FileUploader from '../components/FileUploader';
 import FileList from '../components/FileList';
 import HamburgerMenu from '../components/HamburgerMenu';
+import Image from 'next/image'; // Import Next.js Image component
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
@@ -13,6 +14,7 @@ const Dashboard = () => {
   const [userInfo, setUserInfo] = useState(null);
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -98,6 +100,15 @@ const Dashboard = () => {
       console.error("Error uploading avatar:", error);
     }
   };
+ 
+  //handle click event for file previews
+  const handleFileClick = (file) => {
+    setSelectedFile(file);
+  }
+
+  const closePreview = () => {
+    setSelectedFile(null);
+  }
 
   const renderWelcomeMessage = () => {
     if (user) {
@@ -107,7 +118,15 @@ const Dashboard = () => {
             Welcome back, {user.name}!
           </div>
           {avatar ? (
-            <img src={avatar} alt="Avatar" className="w-12 h-12 rounded-full cursor-pointer" onClick={() => document.getElementById('avatarInput').click()} />
+            <div className="w-12 h-12 rounded-full cursor-pointer" onClick={() => document.getElementById('avatarInput').click()}>
+              <Image
+                src={avatar}
+                alt="Avatar"
+                width={48}
+                height={48}
+                className="rounded-full"
+              />
+            </div>
           ) : (
             <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center cursor-pointer" onClick={() => document.getElementById('avatarInput').click()}>
               {user.name.charAt(0)}
