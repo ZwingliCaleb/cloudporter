@@ -1,19 +1,23 @@
 import { useState, useEffect } from 'react';
 import ExpandableCard from './ExpandableCard';
 
-const ProfileForm = ({ user, onProfileUpdate }) => {
+const ProfileForm = ({ user, onProfileUpdate, autoEdit }) => {
   const [avatar, setAvatar] = useState(null);
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [message, setMessage] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (user) {
       setName(user.name);
       setEmail(user.email);
       setAvatar(null);
-    };
-  }, [user]);
+    }
+    if (autoEdit) {
+      setIsEditing(true);
+    }
+  }, [user, autoEdit]);
 
   const handleFileChange = (e) => {
     setAvatar(e.target.files[0]);
@@ -37,6 +41,7 @@ const ProfileForm = ({ user, onProfileUpdate }) => {
         const data = await response.json();
         setMessage('Profile successfully updated');
         onProfileUpdate(name, data.avatarUrl);
+        setIsEditing(false);
       } else {
         const errorData = await response.json();
         console.error('Failed to update profile:', errorData);

@@ -65,7 +65,8 @@ const Dashboard = () => {
   }, []);
 
   const handleProfileUpdate = () => {
-    setShowUserProfile(true);
+    setShowProfilePopup(false); // Close the popup
+    setShowUserProfile(true); // Show the UserProfile component within the dashboard
   };
 
   const handleAvatarUpload = async (event) => {
@@ -100,8 +101,7 @@ const Dashboard = () => {
       console.error("Error uploading avatar:", error);
     }
   };
- 
-  //handle click event for file previews
+
   const handleFileClick = (file) => {
     setSelectedFile(file);
   }
@@ -161,15 +161,11 @@ const Dashboard = () => {
           <HamburgerMenu />
         </div>
         <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
-        {showUserProfile ? (
-          <UserProfile className="bg-white p-6 rounded-lg shadow-md w-full" user={user} onProfileUpdate={handleProfileUpdateCallback} />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-4xl">
-            <UserProfile className="bg-white p-6 rounded-lg shadow-md w-full" user={user} onProfileUpdate={handleProfileUpdateCallback} />
-            <FileUploader className="bg-white p-6 rounded-lg shadow-md w-full" />
-            <FileList />
-          </div>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-4xl">
+          <UserProfile className="bg-white p-6 rounded-lg shadow-md w-full" user={user} onProfileUpdate={handleProfileUpdateCallback} autoEdit={showUserProfile} />
+          <FileUploader className="bg-white p-6 rounded-lg shadow-md w-full" />
+          <FileList />
+        </div>
       </div>
       {showProfilePopup && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
